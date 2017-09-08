@@ -1,4 +1,6 @@
 # robospider
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)]()
+
 A command line spider for robot.txt files written in go, inspired from [Parsero](https://tools.kali.org/information-gathering/parsero).
 
 ## Contributing
