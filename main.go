@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -87,21 +87,16 @@ func writeLines(lines []string, path string) error {
 }
 
 // Read text line by line and get robot file entries
-func readLines(input string) ([]string, error) {
-
+func readLines(input io.Reader) ([]string, error) {
 	var lines []string
-
-	scanner := bufio.NewScanner(strings.NewReader(input))
-
+	scanner := bufio.NewScanner(input)
 	for scanner.Scan() {
 		value := strings.Split(scanner.Text(), "Disallow: /")
 		if len(value) > 1 {
 			lines = append(lines, value[1])
 		}
 	}
-
 	return lines, scanner.Err()
-
 }
 
 func main() {
@@ -171,17 +166,9 @@ func main() {
 
 	// close response
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
 
-	// Exit with error if robot file can't be parsed
-	if err != nil {
-		fmt.Println("[e]: Something went wrong when trying to parse the response:", err)
-		os.Exit(0)
-	}
-
-	// parse lines into array
-	responseString := string(body)
-	results, err := readLines(responseString)
+	// Parse response body
+	results, err := readLines(resp.Body)
 
 	// exit if something when wrong when parsing response
 	if err != nil {
