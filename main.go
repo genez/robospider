@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -30,9 +29,9 @@ func init() {
 func printBanner() {
 	fmt.Println("          ")
 	fmt.Println("   |  |   ")
-	fmt.Printf("   \\()/    Robospider v%v \n", version)
+	fmt.Printf("   \\**/    Robospider v%v \n", version)
 	fmt.Println("  o={}=o   by Filippo 'b4dnewz' Conti")
-	fmt.Println(" / /**\\ \\  codekraft-studio <info@codekraft.it>")
+	fmt.Println(" / /()\\ \\  codekraft-studio <info@codekraft.it>")
 	fmt.Println("   \\  /  ")
 	fmt.Println("          ")
 }
@@ -98,10 +97,13 @@ func main() {
 		return
 	}
 
+	// Get the domain from last argument
+	domain := args[len(args)-1]
 	// TODO: See if this can be done with url.Parse in a more efficient way
 	// Exit with an user warning if the domain is not valid url
-	if result, _ := validateDomain(args[len(args)-1]); result == false {
-		log.Fatal("Warning: You must provide a valid domain, otherwise it will not work.")
+	if result, _ := validateDomain(domain); result == false {
+		fmt.Println("The domain name is not valid:", domain)
+		return
 	}
 
 	// Parse script flags into variables
@@ -131,7 +133,7 @@ func main() {
 	}
 
 	// TODO: Make an option or something to let user choose from http, https
-	domainURL := buildDomainURL(args[len(args)-1])
+	domainURL := buildDomainURL(domain)
 
 	// robots file is case sensitive and must be placed in the root directory
 	// so this url construction pattern should always match
