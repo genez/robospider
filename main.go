@@ -22,15 +22,12 @@ var successList []string
 
 // Init sscript flag variables
 func init() {
-
 	flag.StringVar(&output, "output", "", "the output file name Default: [domain].log")
 	flag.StringVar(&proxy, "proxy", "", "the full address of the proxy server to use: [address:port]")
-
 }
 
 // Print the project banner
 func printBanner() {
-
 	fmt.Println("          ")
 	fmt.Println("   |  |   ")
 	fmt.Printf("   \\()/    Robospider v%v \n", version)
@@ -38,7 +35,6 @@ func printBanner() {
 	fmt.Println(" / /**\\ \\  codekraft-studio <info@codekraft.it>")
 	fmt.Println("   \\  /  ")
 	fmt.Println("          ")
-
 }
 
 // Validate input as url
@@ -54,36 +50,25 @@ func getDomainName(input string) string {
 
 // Ensure the domain has the protocol
 func buildDomainURL(input string) string {
-
 	match, _ := regexp.MatchString("^(https?://)", input)
-
 	if match == false {
 		input = fmt.Sprintf("http://%v", input)
 	}
-
 	return input
-
 }
 
 // Write resulting lines to file
 func writeLines(lines []string, path string) error {
-
 	file, err := os.Create(path)
-
 	if err != nil {
 		return err
 	}
-
 	defer file.Close()
-
 	w := bufio.NewWriter(file)
-
 	for _, line := range lines {
 		fmt.Fprintln(w, line)
 	}
-
 	return w.Flush()
-
 }
 
 // Read text line by line and get robot file entries
@@ -110,14 +95,13 @@ func main() {
 	// Exit with the usage informations if no arguments
 	if len(args) == 0 {
 		flag.PrintDefaults()
-		os.Exit(0)
+		return
 	}
 
 	// TODO: See if this can be done with url.Parse in a more efficient way
 	// Exit with an user warning if the domain is not valid url
 	if result, _ := validateDomain(args[len(args)-1]); result == false {
-		fmt.Println("Warning: You must provide a valid domain, otherwise it will not work.")
-		os.Exit(0)
+		log.Fatal("Warning: You must provide a valid domain, otherwise it will not work.")
 	}
 
 	// Parse script flags into variables
@@ -172,18 +156,18 @@ func main() {
 
 	// exit if something when wrong when parsing response
 	if err != nil {
-		fmt.Println("[e]: Something went wrong when parsing the response:")
-		fmt.Println(err)
-		os.Exit(0)
+		fmt.Println("[e]: robots.txt file is invalid and can't be parsed.")
+		return
 	}
 
 	// exit if robot file has no entries
 	if len(results) == 0 {
-		fmt.Println("[e]: The file doesn't contain any entries to scan, quitting.")
-		os.Exit(0)
+		fmt.Println("[i]: The file doesn't contain any entry to scan, quitting.")
+		return
 	}
 
 	// Init execution time counter
+	fmt.Println("[i]: The file has been found and properly parsed.")
 	fmt.Printf("[i]: Starting the scan of %v entries:\n\n", len(results))
 	start := time.Now()
 
@@ -193,9 +177,8 @@ func main() {
 		// create url to check
 		pathURL := fmt.Sprintf("%v/%v", domainURL, result)
 
-		fmt.Printf("- Attempt to get result: %v ", pathURL)
-
 		// try to get the url
+		fmt.Printf("- Attempt to get result: %v ", pathURL)
 		resp, err := client.Get(pathURL)
 
 		fmt.Printf("[%v] - %v \n", resp.StatusCode, resp.Status)
@@ -210,6 +193,9 @@ func main() {
 
 	}
 
+	// Output the scan time
+	fmt.Printf("\n[i]: The scan has completed with %v error and %v success in %v.\n", len(results)-len(successList), len(successList), time.Since(start))
+
 	// Create the output directory
 	_ = os.Mkdir("output", os.ModePerm)
 
@@ -221,12 +207,8 @@ func main() {
 	}
 
 	// Write the result into output folder
-	if err := writeLines(successList, output); err != nil {
-		log.Fatalln("[e]:", err)
+	if err := writeLines(successList, output); err == nil {
+		fmt.Println("[i]: The resulting output file has been created at path:", output)
 	}
-
-	fmt.Println("")
-	fmt.Printf("[i]: The scan has finished with %v error urls and %v success urls in %v. \n", len(results)-len(successList), len(successList), time.Since(start))
-	fmt.Println("[i]: The result file has been created in:", output)
 
 }
