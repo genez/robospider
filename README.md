@@ -27,21 +27,21 @@ Also, it doesn't mean that the files or directories typed in the Dissallow entri
 ---
 
 ## Usage
+The last argument __must__ be the domain or the url to scan.
 ```
 
-  |  |   
-  \()/    Robospider v1.0.0 
- o={}=o   by Filippo 'b4dnewz' Conti
-/ /**\ \  codekraft-studio <info@codekraft.it>
-  \  /  
-
-Usage: robospider [-proxy URL] [-output NAME] [DOMAIN]
-
--output string
-  the output file name Default: [domain].log
-  
--proxy string
-  the full address of the proxy server to use: [address:port]
+   |  |
+   \**/    Robospider v1.0.0
+  o={}=o   by Filippo 'b4dnewz' Conti
+ / /()\ \  codekraft-studio <info@codekraft.it>
+   \  /
+ 
+Package usage: robospider [-proxy URL] [-output NAME] [DOMAIN]
+ 
+  -output string
+        the output file name Default: [domain].log
+  -proxy string
+        the full address of the proxy server to use: [address:port]
 
 ```
 ---
