@@ -19,6 +19,12 @@ var proxy string
 var output string
 var successList []string
 
+// Usage print a custom usage function
+func Usage() {
+	fmt.Print("Package usage: robospider [-proxy URL] [-output NAME] [DOMAIN]\n\n")
+	flag.PrintDefaults()
+}
+
 // Init sscript flag variables
 func init() {
 	flag.StringVar(&output, "output", "", "the output file name Default: [domain].log")
@@ -84,6 +90,7 @@ func readLines(input io.Reader) ([]string, error) {
 }
 
 func main() {
+	flag.Usage = Usage
 
 	// Output package banner
 	printBanner()
@@ -93,8 +100,8 @@ func main() {
 
 	// Exit with the usage informations if no arguments
 	if len(args) == 0 {
-		flag.PrintDefaults()
-		return
+		flag.Usage()
+		os.Exit(1)
 	}
 
 	// Get the domain from last argument
