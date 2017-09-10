@@ -42,17 +42,6 @@ func printBanner() {
 	fmt.Println("          ")
 }
 
-// Validate input as url
-func validateDomain(input string) (bool, error) {
-	return regexp.MatchString("^(https?://)?([\\da-z\\.-]+)\\.([a-z\\.]{2,6})$", input)
-}
-
-// Extract the domain name from the url
-func getDomainName(input string) string {
-	r := regexp.MustCompile("(?i)^(?:https?://)?(?:[^@\n]+@)?(?:www\\.)?([^:/\n]+)")
-	return r.FindStringSubmatch(input)[1]
-}
-
 // Ensure the domain has the protocol
 func buildDomainURL(input string) string {
 	match, _ := regexp.MatchString("^(https?://)", input)
@@ -104,11 +93,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Get the domain from last argument
-	domain := args[len(args)-1]
-	// TODO: See if this can be done with url.Parse in a more efficient way
-	// Exit with an user warning if the domain is not valid url
-	if result, _ := validateDomain(domain); result == false {
+	// Parse url string into object
+	domain, err := url.ParseRequestURI(buildDomainURL(args[len(args)-1]))
+
+	// Exit if url can't be parsed
+	if err != nil {
 		fmt.Println("The domain name is not valid:", domain)
 		return
 	}
@@ -123,27 +112,25 @@ func main() {
 
 	// If the oroxy flag is set and not empty
 	if proxy != "" {
-
 		// Parse the proxy address
 		fmt.Println("[d]: Trying to validate the proxy address before using it.")
-		parsedURL, err := url.Parse(proxy)
+		parsedURL, parseErr := url.Parse(buildDomainURL(proxy))
 
-		if err != nil {
-			fmt.Println("[e]:", err)
+		// Warn the proxy error and stop the execution to prevent any unwanted request
+		if parseErr != nil {
+			fmt.Println("[e]: Invalid proxy address:", parseErr)
 			return
 		}
 
-		// Set the http client proxy
+		// Set the http client proxy and increase default timeout since proxy can be slow as fuck
 		fmt.Println("[i]: Setting up transport with proxy server at address:", parsedURL)
 		client.Transport = &http.Transport{Proxy: http.ProxyURL(parsedURL)}
-
+		client.Timeout = time.Duration(10 * time.Second)
 	}
-
-	// TODO: Make an option or something to let user choose from http, https
-	domainURL := buildDomainURL(domain)
 
 	// robots file is case sensitive and must be placed in the root directory
 	// so this url construction pattern should always match
+	domainURL := domain.String()
 	robotsURL := fmt.Sprintf("%v/robots.txt", domainURL)
 
 	// try to get the site robot file
@@ -154,7 +141,7 @@ func main() {
 	// if request failed show the error and exit
 	if err != nil {
 		fmt.Println("[e]:", err)
-		os.Exit(0)
+		os.Exit(1)
 	}
 
 	// close response
@@ -210,7 +197,7 @@ func main() {
 
 	// Set default output name if nothing was passed
 	if output == "" {
-		output = fmt.Sprintf("output/%v.log", getDomainName(domainURL))
+		output = fmt.Sprintf("output/%v.log", domain.Hostname())
 	} else {
 		output = fmt.Sprintf("output/%v.log", output)
 	}
@@ -219,5 +206,4 @@ func main() {
 	if err := writeLines(successList, output); err == nil {
 		fmt.Println("[i]: The resulting output file has been created at path:", output)
 	}
-
 }
