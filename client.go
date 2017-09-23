@@ -49,7 +49,7 @@ func (cli *httpClient) Fetch(targetUrl *url.URL, result chan<- Resource) error {
 
 	// if request failed show the error and exit
 	if err != nil && resp.StatusCode != http.StatusNotFound {
-		fmt.Println("[e]: Failed to fetch resource:", err)
+		log.Println("[e]: Failed to fetch resource:", err)
 		return err
 	}
 
@@ -58,7 +58,7 @@ func (cli *httpClient) Fetch(targetUrl *url.URL, result chan<- Resource) error {
 	//defer resp.Body.Close()
 
 	result <- Resource{
-		Name:  targetUrl.String(),
+		Name:  targetUrl.Path,
 		Found: (resp.StatusCode == http.StatusOK),
 		Body:  resp.Body,
 	}

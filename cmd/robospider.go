@@ -10,6 +10,7 @@ import (
 	"os"
 	"sync"
 	"time"
+	"path/filepath"
 )
 
 const version = "1.0.0"
@@ -92,17 +93,17 @@ func main() {
 		log.Fatal("[e]: Robots.txt parsing failed:", err)
 	}
 
-	// Create the output directory
-	err = os.Mkdir("output", os.ModePerm)
-	if err != nil && !os.IsExist(err) {
-		log.Fatal("[e]: could not create output directory:", err)
-	}
-
 	// Set default output name if nothing was passed
 	if *output == "" {
 		*output = fmt.Sprintf("output/%v.log", args[0])
 	} else {
 		*output = fmt.Sprintf("output/%v.log", output)
+	}
+
+	// Create the output directory
+	err = os.Mkdir(*output, os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		log.Fatal("[e]: could not create output directory:", err)
 	}
 
 	//we have the stream of robots.txt file now
@@ -140,7 +141,7 @@ func main() {
 
 			for r := range disallowedResources {
 				if r.Body != nil && r.Found {
-					writeFile(r.Body, r.Name)
+					writeFile(r.Body, *output, r.Name)
 					r.Body.Close()
 					successCount++
 				}
@@ -159,8 +160,9 @@ func main() {
 	fmt.Printf("\n[i]: The scan has completed with %v error and %v success in %v.\n", len(disallowedEntries)-successCount, successCount, time.Since(start))
 }
 
-func writeFile(reader io.Reader, path string) error {
-	file, err := os.Create(path)
+func writeFile(reader io.Reader, baseDir string, path string) error {
+	p := filepath.Base(filepath.Clean(path))
+	file, err := os.Create(filepath.Join(baseDir, p))
 	if err != nil {
 		return err
 	}

@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/url"
 	"strings"
+	"log"
 )
 
 type robotsParser struct {
@@ -26,7 +27,9 @@ func (r *robotsParser) Parse(input io.Reader) ([]*url.URL, error) {
 			if err != nil {
 				return entries, err
 			}
-			entries = append(entries, r.robotsURL.ResolveReference(relative))
+			resolved := r.robotsURL.ResolveReference(relative)
+			log.Println("[i] resolved URL: ", resolved.String())
+			entries = append(entries, resolved)
 		}
 	}
 	return entries, scanner.Err()
