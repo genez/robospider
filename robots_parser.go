@@ -3,9 +3,9 @@ package robospider
 import (
 	"bufio"
 	"io"
+	"log"
 	"net/url"
 	"strings"
-	"log"
 )
 
 type robotsParser struct {
@@ -17,8 +17,8 @@ func NewRobotsParser(robotsURL *url.URL) *robotsParser {
 }
 
 // Read text line by line and get robot file entries
-func (r *robotsParser) Parse(input io.Reader) ([]*url.URL, error) {
-	var entries []*url.URL
+func (r *robotsParser) Parse(input io.Reader) (map[string]*url.URL, error) {
+	entries := make(map[string]*url.URL)
 	scanner := bufio.NewScanner(input)
 	for scanner.Scan() {
 		value := strings.Split(scanner.Text(), "Disallow: /")
@@ -29,7 +29,7 @@ func (r *robotsParser) Parse(input io.Reader) ([]*url.URL, error) {
 			}
 			resolved := r.robotsURL.ResolveReference(relative)
 			log.Println("[i] resolved URL: ", resolved.String())
-			entries = append(entries, resolved)
+			entries[resolved.String()] = resolved
 		}
 	}
 	return entries, scanner.Err()

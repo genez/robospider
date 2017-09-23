@@ -8,9 +8,15 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
-	"path/filepath"
+)
+
+import (
+	"net/http"
+	_ "net/http/pprof"
 )
 
 const version = "1.0.0"
@@ -35,9 +41,13 @@ func printBanner() {
 	fmt.Println("          ")
 }
 
-const workerPoolSize = 8
+const workerPoolSize = 1
 
 func main() {
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
 	flag.Usage = Usage
 
 	// Output package banner
@@ -110,36 +120,46 @@ func main() {
 	//let's create a channel for subsequent workers
 	//buffered channel size should be tuned according to benchmarks/real world tests
 
+	scheduledResources := make(chan *url.URL, workerPoolSize)
+
 	//buffer size should be tuned with real world tests
-	disallowedResources := make(chan robospider.Resource, workerPoolSize)
+	completedResources := make(chan robospider.Resource, workerPoolSize)
 
 	start := time.Now()
 
+
+	//////////////////
+	// SET UP THE PRODUCER POOL, FIRST
+	//////////////////
+
 	wgProducers := &sync.WaitGroup{}
 	//let's start a new goroutine for each downloader (producer)
-	for i := 0; i < workerPoolSize && i < len(disallowedEntries); i++ {
+	for i := 0; i < workerPoolSize; i++ {
 		wgProducers.Add(1)
-		go func(targetURL *url.URL) {
+		go func() {
 			defer wgProducers.Done()
-
-			c := robospider.NewHttpClientWithProxy(*proxy)
-			err := c.Fetch(targetURL, disallowedResources)
-			if err != nil {
-				log.Fatal("[e]:", targetURL, ": download error:", err)
+			for res := range scheduledResources {
+				c := robospider.NewHttpClientWithProxy(*proxy)
+				err := c.Fetch(res, completedResources)
+				if err != nil {
+					log.Fatal("[e]:", res, ": download error:", err)
+				}
 			}
-		}(disallowedEntries[i])
+		}()
 	}
 
+	///////////////////
+	// SET UP THE CONSUMER POOL
+	///////////////////
 	successCount := 0
-
 	wgConsumers := &sync.WaitGroup{}
 	//let's start consumers on the result channel (in a new goroutine)
-	for i := 0; i < workerPoolSize && i < len(disallowedEntries); i++ {
+	for i := 0; i < workerPoolSize; i++ {
 		wgConsumers.Add(1)
 		go func() {
 			defer wgConsumers.Done()
 
-			for r := range disallowedResources {
+			for r := range completedResources {
 				if r.Body != nil && r.Found {
 					writeFile(r.Body, *output, r.Name)
 					r.Body.Close()
@@ -149,20 +169,31 @@ func main() {
 		}()
 	}
 
+	/////////////
+	// FEED THE PRODUCERS, SO THE CHAIN CAN START ITS JOB
+	/////////////
+
+	//pump entries into scheduled resources channel
+	for _, v := range disallowedEntries {
+		scheduledResources <- v
+	}
+	close(scheduledResources)
+
 	//wait all the downloaders to complete their work
 	wgProducers.Wait()
 	//closing the channel will tell consumers there are no more results to handle
-	close(disallowedResources)
+	close(completedResources)
 	//wait for all consumers to finish their work
 	wgConsumers.Wait()
 
 	// Output the scan time
-	fmt.Printf("\n[i]: The scan has completed with %v error and %v success in %v.\n", len(disallowedEntries)-successCount, successCount, time.Since(start))
+	log.Printf("[i]: The scan has completed with %v error and %v success in %v.\n", len(disallowedEntries)-successCount, successCount, time.Since(start))
 }
 
-func writeFile(reader io.Reader, baseDir string, path string) error {
-	p := filepath.Base(filepath.Clean(path))
-	file, err := os.Create(filepath.Join(baseDir, p))
+func writeFile(reader io.Reader, baseDir string, fullURL string) error {
+	p := strings.NewReplacer(":", "_", "/", "")
+	x := p.Replace(fullURL)
+	file, err := os.Create(filepath.Join(baseDir, x))
 	if err != nil {
 		return err
 	}
@@ -172,5 +203,8 @@ func writeFile(reader io.Reader, baseDir string, path string) error {
 	if err != nil {
 		return err
 	}
+
+	log.Println("[i]: file written: ", x)
+
 	return nil
 }

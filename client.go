@@ -13,7 +13,6 @@ type httpClient struct {
 	proxyServer string
 }
 
-
 // Ensure the domain has the protocol
 func BuildDomainURL(input string) string {
 	match, _ := regexp.MatchString("^(https?://)", input)
@@ -45,6 +44,7 @@ func (cli *httpClient) Fetch(targetUrl *url.URL, result chan<- Resource) error {
 		hc.Timeout = time.Duration(10 * time.Second)
 	}
 
+	log.Println("[i]: fetching", targetUrl.String(), "...")
 	resp, err := hc.Get(targetUrl.String())
 
 	// if request failed show the error and exit
@@ -56,6 +56,8 @@ func (cli *httpClient) Fetch(targetUrl *url.URL, result chan<- Resource) error {
 	// DO NOT close the response, as the body is going to be put in a channel
 	// the caller must close it after use
 	//defer resp.Body.Close()
+
+	log.Println("[i]: fetch completed", targetUrl.String())
 
 	result <- Resource{
 		Name:  targetUrl.Path,
@@ -77,4 +79,3 @@ func NewHttpClientWithProxy(proxyURL string) *httpClient {
 		proxyServer: proxyURL,
 	}
 }
-
